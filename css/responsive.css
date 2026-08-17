@@ -1,0 +1,190 @@
+@media (max-width: 1100px) {
+  .problem-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .problem-detail__aside {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main__inner {
+    padding: 16px;
+  }
+
+  .topnav__inner {
+    padding: 0 12px;
+    gap: 10px;
+  }
+
+  .topnav__links {
+    display: none;
+  }
+
+  .topnav__name {
+    font-size: 15px;
+  }
+
+  .topnav__search {
+    display: none;
+  }
+
+  .topnav__search.is-mobile-open {
+    display: block;
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    width: auto;
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+    z-index: 110;
+  }
+
+  .topnav__search.is-mobile-open .topnav__search-cancel {
+    display: inline-flex;
+  }
+
+  .topnav__search-trigger {
+    display: inline-flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    margin-left: 0 !important;
+    box-shadow: var(--shadow-md);
+    z-index: 95;
+  }
+
+  body.sidebar-mobile-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar__close {
+    display: inline-flex;
+  }
+
+  .hero {
+    padding: 24px 0 16px;
+  }
+
+  .hero__title {
+    font-size: 24px;
+  }
+
+  .hero__desc {
+    font-size: 14.5px;
+  }
+
+  .stats {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .stat-card {
+    padding: 12px 14px;
+  }
+
+  .stat-card__value {
+    font-size: 20px;
+  }
+
+  .problem-item {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .problem-item__limits {
+    display: none;
+  }
+
+  .problem-heading {
+    font-size: 20px;
+  }
+
+  .problem-hero {
+    padding: 16px;
+  }
+
+  .problem-hero__source {
+    display: none;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: var(--radius-md);
+  }
+
+  .footer__inner {
+    padding: 0 16px;
+  }
+
+  .footer__row {
+    font-size: 12.5px;
+  }
+
+  .toast-container {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .toast {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .modal-backdrop {
+    padding: 4vh 12px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .hero__search-btn {
+    padding: 8px 12px;
+  }
+
+  .problem-item__pid {
+    width: 44px;
+    font-size: 12.5px;
+  }
+
+  .pagination__link {
+    min-width: 30px;
+    height: 30px;
+    font-size: 12.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}

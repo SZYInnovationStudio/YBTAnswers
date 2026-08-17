@@ -1,0 +1,271 @@
+<?php
+
+declare(strict_types=1);
+
+function e(?string $value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function app_log(string $message, string $level = 'info'): void
+{
+    $file = defined('LOG_FILE') ? LOG_FILE : dirname(__DIR__) . '/logs/app.log';
+    $dir = dirname($file);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    $line = sprintf("[%s] [%s] %s%s", date('Y-m-d H:i:s'), strtoupper($level), $message, PHP_EOL);
+    @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+}
+
+function csrf_token(): string
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrf_field(): string
+{
+    return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
+}
+
+function csrf_verify(): bool
+{
+    $token = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    return is_string($token) && $token !== '' && hash_equals(csrf_token(), $token);
+}
+
+function require_csrf(): void
+{
+    if (!csrf_verify()) {
+        http_response_code(419);
+        exit('CSRF 校验失败，请刷新页面后重试。');
+    }
+}
+
+function flash(string $type, string $message): void
+{
+    $_SESSION['flash'][] = ['type' => $type, 'message' => $message];
+}
+
+function get_flashes(): array
+{
+    $flashes = $_SESSION['flash'] ?? [];
+    unset($_SESSION['flash']);
+    return $flashes;
+}
+
+function redirect(string $url): void
+{
+    header('Location: ' . $url);
+    exit;
+}
+
+function json_response(array $data, int $status = 200): void
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function str_input(?string $value): string
+{
+    $value = (string) $value;
+    $value = str_replace(["\r\n", "\r"], "\n", $value);
+    return trim($value);
+}
+
+function int_input($value, int $default = 0): int
+{
+    return is_numeric($value) ? (int) $value : $default;
+}
+
+function highlight_keyword(string $text, string $keyword): string
+{
+    $escaped = e($text);
+    $keyword = trim($keyword);
+    if ($keyword === '') {
+        return $escaped;
+    }
+    $pattern = '/' . preg_quote(e($keyword), '/') . '/iu';
+    return (string) preg_replace($pattern, '<mark>$0</mark>', $escaped);
+}
+
+function format_limit(?string $timeLimit, ?string $memoryLimit): string
+{
+    $parts = [];
+    if ($timeLimit !== null && $timeLimit !== '') {
+        $parts[] = e($timeLimit);
+    }
+    if ($memoryLimit !== null && $memoryLimit !== '') {
+        $parts[] = e($memoryLimit);
+    }
+    return implode(' · ', $parts);
+}
+
+function format_datetime(?string $datetime): string
+{
+    if (!$datetime) {
+        return '—';
+    }
+    $ts = strtotime($datetime);
+    return $ts ? date('Y-m-d H:i', $ts) : $datetime;
+}
+
+function setting_get(string $key, string $default = ''): string
+{
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->query('SELECT `key`, `value` FROM settings');
+            foreach ($stmt as $row) {
+                $cache[$row['key']] = (string) $row['value'];
+            }
+        } catch (Throwable $ex) {
+            return $default;
+        }
+    }
+    return $cache[$key] ?? $default;
+}
+
+function setting_set(string $key, string $value): void
+{
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare(
+        'INSERT INTO settings (`key`, `value`) VALUES (:key, :value)
+         ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)'
+    );
+    $stmt->execute(['key' => $key, 'value' => $value]);
+}
+
+function is_installed(): bool
+{
+    if (defined('APP_INSTALLED') && APP_INSTALLED) {
+        return true;
+    }
+    return is_file(__DIR__ . '/config.local.php');
+}
+
+function guard_installed(): void
+{
+    if (!is_installed()) {
+        redirect(url('install.php'));
+    }
+}
+
+function base_url(): string
+{
+    static $base = null;
+    if ($base !== null) {
+        return $base;
+    }
+    $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/'));
+    $scriptFile = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_FILENAME'] ?? ''));
+    $root = str_replace('\\', '/', ROOT_PATH);
+    if ($scriptFile !== '' && str_starts_with($scriptFile, $root)) {
+        $relative = '/' . ltrim(substr($scriptFile, strlen($root)), '/');
+        if (str_ends_with($scriptName, $relative)) {
+            $base = rtrim(substr($scriptName, 0, strlen($scriptName) - strlen($relative)), '/');
+            return $base;
+        }
+    }
+    $base = '';
+    return $base;
+}
+
+function url(string $path = ''): string
+{
+    return base_url() . '/' . ltrim($path, '/');
+}
+
+function current_path(): string
+{
+    return str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/');
+}
+
+function is_admin_area(): bool
+{
+    return str_contains(current_path(), '/admin/');
+}
+
+function render_math(string $html): string
+{
+    return nl2br($html);
+}
+
+function render_code_block(string $code, string $language = 'cpp'): string
+{
+    return '<pre class="code-block"><code class="language-' . e($language) . '">'
+        . e($code) . '</code></pre>';
+}
+
+function paginate(int $total, int $perPage, int $page): array
+{
+    $pages = max(1, (int) ceil($total / $perPage));
+    $page = max(1, min($page, $pages));
+    return ['total' => $total, 'pages' => $pages, 'page' => $page, 'offset' => ($page - 1) * $perPage];
+}
+
+function pagination_links(int $pages, int $page, string $pattern): string
+{
+    if ($pages <= 1) {
+        return '';
+    }
+    $make = static function (int $p) use ($pattern): string {
+        return e(str_replace('{page}', (string) $p, $pattern));
+    };
+    $html = '<nav class="pagination" aria-label="分页">';
+    if ($page > 1) {
+        $html .= '<a class="pagination__link" href="' . $make($page - 1) . '" rel="prev">上一页</a>';
+    }
+    $window = [];
+    $window[] = 1;
+    for ($i = $page - 2; $i <= $page + 2; $i++) {
+        if ($i >= 1 && $i <= $pages) {
+            $window[] = $i;
+        }
+    }
+    $window[] = $pages;
+    $window = array_values(array_unique($window));
+    sort($window);
+    $prev = 0;
+    foreach ($window as $p) {
+        if ($p - $prev > 1) {
+            $html .= '<span class="pagination__ellipsis">…</span>';
+        }
+        $active = $p === $page ? ' pagination__link--active' : '';
+        $html .= '<a class="pagination__link' . $active . '" href="' . $make($p) . '">' . $p . '</a>';
+        $prev = $p;
+    }
+    if ($page < $pages) {
+        $html .= '<a class="pagination__link" href="' . $make($page + 1) . '" rel="next">下一页</a>';
+    }
+    $html .= '</nav>';
+    return $html;
+}
+
+function password_strength_ok(string $password): bool
+{
+    if (strlen($password) < 8) {
+        return false;
+    }
+    $score = 0;
+    if (preg_match('/[a-z]/', $password)) {
+        $score++;
+    }
+    if (preg_match('/[A-Z]/', $password)) {
+        $score++;
+    }
+    if (preg_match('/\d/', $password)) {
+        $score++;
+    }
+    if (preg_match('/[^a-zA-Z0-9]/', $password)) {
+        $score++;
+    }
+    return $score >= 3;
+}

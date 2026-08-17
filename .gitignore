@@ -1,0 +1,9 @@
+/includes/config.local.php
+/includes/secret.key
+/cache/*
+!/cache/.htaccess
+/logs/*
+!/logs/.htaccess
+.DS_Store
+Thumbs.db
+/网站制作要求.txt
