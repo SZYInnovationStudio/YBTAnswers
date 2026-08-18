@@ -83,6 +83,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const open = leaf.classList.toggle('is-open');
       subToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       leaf.setAttribute('aria-expanded', open ? 'true' : 'false');
+      return;
+    }
+    const chapterToggle = event.target.closest('.tree__chapter-toggle');
+    if (chapterToggle) {
+      event.preventDefault();
+      const leaf = chapterToggle.closest('.tree__leaf');
+      if (!leaf) {
+        return;
+      }
+      const open = leaf.classList.toggle('is-open');
+      chapterToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      leaf.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
   });
 

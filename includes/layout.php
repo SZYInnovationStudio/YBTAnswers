@@ -38,13 +38,22 @@ function render_sidebar_tree(array $tree, ?int $activeChapterId, ?string $active
                         . '</a></li>';
                 }
                 $count = count($chapter['problems']);
-                $chaptersHtml .= '<li class="tree__leaf' . ($chapterHasActive ? ' is-open' : '') . '" role="treeitem">'
+                $hasProblems = $problemsHtml !== '';
+                $chaptersHtml .= '<li class="tree__leaf' . ($chapterHasActive ? ' is-open' : '') . '" role="treeitem" aria-expanded="' . ($chapterHasActive ? 'true' : 'false') . '">'
+                    . '<div class="tree__chapter-row">'
+                    . ($hasProblems
+                        ? '<button type="button" class="tree__chapter-toggle" aria-expanded="' . ($chapterHasActive ? 'true' : 'false') . '" aria-label="展开章节题目">'
+                        . '<svg class="tree__chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">'
+                        . '<path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                        . '</button>'
+                        : '')
                     . '<a class="tree__chapter' . ($isActiveChapter ? ' tree__chapter--active' : '') . '" '
                     . 'href="' . e(url('index.php?chapter=' . (int) $chapter['id'])) . '">'
                     . '<span class="tree__chapter-name">' . e((string) $chapter['name']) . '</span>'
                     . '<span class="tree__count">' . $count . '</span>'
                     . '</a>'
-                    . ($problemsHtml !== '' ? '<ul class="tree__group tree__group--problems" role="group">' . $problemsHtml . '</ul>' : '')
+                    . '</div>'
+                    . ($hasProblems ? '<ul class="tree__group tree__group--problems" role="group">' . $problemsHtml . '</ul>' : '')
                     . '</li>';
             }
             $subpartsHtml .= '<li class="tree__leaf' . ($subOpen ? ' is-open' : '') . '" role="treeitem" aria-expanded="' . ($subOpen ? 'true' : 'false') . '">'
