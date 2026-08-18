@@ -479,7 +479,7 @@ body.sidebar-collapsed .sidebar {
 
 .tree__subtoggle {
   padding: 6px 10px;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--color-text-secondary);
 }
@@ -537,10 +537,11 @@ body.sidebar-collapsed .sidebar {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 10px 6px 4px;
+  padding: 5px 10px 5px 2px;
   border-radius: var(--radius-sm);
-  font-size: 13.5px;
-  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--color-text-muted);
   border-left: 3px solid transparent;
   transition: background 150ms var(--ease), color 150ms var(--ease), border-color 150ms var(--ease);
 }
@@ -564,12 +565,12 @@ body.sidebar-collapsed .sidebar {
 }
 
 .tree__count {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--color-text-muted);
   background: var(--color-info-soft);
   border-radius: 999px;
-  padding: 0 7px;
-  line-height: 18px;
+  padding: 0 6px;
+  line-height: 16px;
   flex-shrink: 0;
 }
 
@@ -578,7 +579,7 @@ body.sidebar-collapsed .sidebar {
   color: var(--color-accent-hover);
 }
 
-/* 题目组：与章节名对齐 */
+/* 题目组：与章节名保持层级递进 */
 .tree__group--problems {
   padding-left: 24px;
 }
@@ -586,11 +587,11 @@ body.sidebar-collapsed .sidebar {
 .tree__problem {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 5px 10px;
+  gap: 7px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--color-text-secondary);
+  font-size: 12px;
+  color: var(--color-text-muted);
   border-left: 3px solid transparent;
   transition: background 150ms var(--ease), color 150ms var(--ease), border-color 150ms var(--ease);
 }
@@ -608,10 +609,10 @@ body.sidebar-collapsed .sidebar {
 
 .tree__problem-pid {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-muted);
   flex-shrink: 0;
-  min-width: 30px;
+  min-width: 28px;
 }
 
 .tree__problem--active .tree__problem-pid { color: var(--color-accent); }

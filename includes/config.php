@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 define('APP_NAME', '信息学奥赛一本通答案网');
 define('APP_SHORT_NAME', 'YBT Answers');
-define('APP_VERSION', '1.2.2');
+define('APP_VERSION', '1.2.3');
 define('ROOT_PATH', dirname(__DIR__));
 define('INCLUDES_PATH', __DIR__);
 define('CACHE_PATH', ROOT_PATH . '/cache');
