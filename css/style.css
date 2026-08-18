@@ -431,7 +431,7 @@ body.sidebar-collapsed .sidebar {
   padding: 0;
 }
 
-.tree__group {
+.tree .tree__group {
   display: none;
   padding-left: 16px;
   margin-left: 8px;
@@ -580,7 +580,7 @@ body.sidebar-collapsed .sidebar {
 }
 
 /* 题目组：与章节名保持层级递进 */
-.tree__group--problems {
+.tree .tree__group--problems {
   padding-left: 28px;
 }
 
