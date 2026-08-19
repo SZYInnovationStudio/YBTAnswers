@@ -199,11 +199,18 @@ function sanitize_html(string $html): string
     if ($html === '') {
         return '';
     }
+    for ($i = 0; $i < 3; $i++) {
+        $next = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($next === $html) {
+            break;
+        }
+        $html = $next;
+    }
     if (!preg_match('/<[a-z][\s\S]*>/i', $html)) {
-        return nl2br(e(html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        return nl2br(e($html));
     }
     if (!class_exists('DOMDocument')) {
-        return nl2br(e(strip_tags(html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8'))));
+        return nl2br(e(strip_tags($html)));
     }
 
     $allow = [
