@@ -193,9 +193,120 @@ function is_admin_area(): bool
     return str_contains(current_path(), '/admin/');
 }
 
-function render_math(string $html): string
+function sanitize_html(string $html): string
 {
-    return nl2br($html);
+    $html = trim($html);
+    if ($html === '') {
+        return '';
+    }
+    if (!preg_match('/<[a-z][\s\S]*>/i', $html)) {
+        return nl2br(e($html));
+    }
+    if (!class_exists('DOMDocument')) {
+        return nl2br(e(strip_tags($html)));
+    }
+
+    $allow = [
+        'p', 'br', 'hr', 'b', 'strong', 'i', 'em', 'u', 's', 'sub', 'sup',
+        'span', 'div', 'pre', 'code', 'blockquote', 'center',
+        'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'font',
+    ];
+    $attrMap = [
+        'a' => ['href', 'title'],
+        'img' => ['src', 'alt', 'title', 'width', 'height'],
+        'td' => ['colspan', 'rowspan', 'align', 'valign', 'width', 'height'],
+        'th' => ['colspan', 'rowspan', 'align', 'valign', 'width', 'height'],
+        'table' => ['border', 'width', 'align', 'cellpadding', 'cellspacing'],
+        'font' => ['color', 'size'],
+    ];
+
+    $prev = libxml_use_internal_errors(true);
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    $doc->loadHTML('<?xml encoding="UTF-8">' . $html);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+
+    $body = $doc->getElementsByTagName('body')->item(0);
+    if (!$body) {
+        return nl2br(e($html));
+    }
+
+    $out = '';
+    foreach ($body->childNodes as $child) {
+        $out .= sanitize_node($child, $allow, $attrMap);
+    }
+    return $out;
+}
+
+function sanitize_node(DOMNode $node, array $allow, array $attrMap): string
+{
+    if ($node->nodeType === XML_TEXT_NODE || $node->nodeType === XML_CDATA_SECTION_NODE) {
+        return e((string) $node->nodeValue);
+    }
+    if ($node->nodeType !== XML_ELEMENT_NODE) {
+        return '';
+    }
+
+    $tag = strtolower((string) $node->nodeName);
+    if (!in_array($tag, $allow, true)) {
+        $out = '';
+        foreach ($node->childNodes as $child) {
+            $out .= sanitize_node($child, $allow, $attrMap);
+        }
+        return $out;
+    }
+
+    $attrStr = '';
+    $allowedAttrs = $attrMap[$tag] ?? [];
+    if ($node->hasAttributes()) {
+        foreach ($node->attributes as $attr) {
+            $name = strtolower((string) $attr->nodeName);
+            if (!in_array($name, $allowedAttrs, true)) {
+                continue;
+            }
+            $value = trim((string) $attr->nodeValue);
+            if ($value === '') {
+                continue;
+            }
+            if ($name === 'href' || $name === 'src') {
+                if (!is_safe_url($value)) {
+                    continue;
+                }
+            } elseif (preg_match('/[\x00-\x1f\x7f]/', $value)) {
+                continue;
+            }
+            $attrStr .= ' ' . $name . '="' . e($value) . '"';
+        }
+    }
+
+    if (in_array($tag, ['br', 'hr', 'img'], true)) {
+        return '<' . $tag . $attrStr . '>';
+    }
+
+    $inner = '';
+    foreach ($node->childNodes as $child) {
+        $inner .= sanitize_node($child, $allow, $attrMap);
+    }
+    return '<' . $tag . $attrStr . '>' . $inner . '</' . $tag . '>';
+}
+
+function is_safe_url(string $url): bool
+{
+    $url = trim($url);
+    if ($url === '') {
+        return false;
+    }
+    if (preg_match('#^https?://#i', $url)) {
+        return true;
+    }
+    if (preg_match('#^//#', $url)) {
+        return false;
+    }
+    if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.\-]*:#', $url)) {
+        return false;
+    }
+    return true;
 }
 
 function render_code_block(string $code, string $language = 'cpp'): string

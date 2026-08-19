@@ -5,6 +5,7 @@ declare(strict_types=1);
 final class Crypto
 {
     private const CIPHER = 'aes-256-cbc';
+    private const MAC_ALGO = 'sha256';
 
     private static function secretKey(): string
     {
@@ -29,12 +30,14 @@ final class Crypto
         if ($plain === '') {
             return '';
         }
+        $key = self::secretKey();
         $iv = random_bytes(openssl_cipher_iv_length(self::CIPHER));
-        $cipher = openssl_encrypt($plain, self::CIPHER, self::secretKey(), OPENSSL_RAW_DATA, $iv);
+        $cipher = openssl_encrypt($plain, self::CIPHER, $key, OPENSSL_RAW_DATA, $iv);
         if ($cipher === false) {
             throw new RuntimeException('加密失败。');
         }
-        return base64_encode($iv . $cipher);
+        $mac = hash_hmac(self::MAC_ALGO, $iv . $cipher, $key, true);
+        return base64_encode($iv . $cipher . $mac);
     }
 
     public static function decrypt(string $payload): string
@@ -47,12 +50,27 @@ final class Crypto
             return '';
         }
         $ivLen = openssl_cipher_iv_length(self::CIPHER);
+        $macLen = 32;
         if (strlen($raw) <= $ivLen) {
             return '';
         }
+        $key = self::secretKey();
+
+        if (strlen($raw) > $ivLen + $macLen) {
+            $iv = substr($raw, 0, $ivLen);
+            $cipher = substr($raw, $ivLen, -$macLen);
+            $mac = substr($raw, -$macLen);
+            $expected = hash_hmac(self::MAC_ALGO, $iv . $cipher, $key, true);
+            if (!hash_equals($expected, $mac)) {
+                return '';
+            }
+            $plain = openssl_decrypt($cipher, self::CIPHER, $key, OPENSSL_RAW_DATA, $iv);
+            return $plain === false ? '' : $plain;
+        }
+
         $iv = substr($raw, 0, $ivLen);
         $cipher = substr($raw, $ivLen);
-        $plain = openssl_decrypt($cipher, self::CIPHER, self::secretKey(), OPENSSL_RAW_DATA, $iv);
+        $plain = openssl_decrypt($cipher, self::CIPHER, $key, OPENSSL_RAW_DATA, $iv);
         return $plain === false ? '' : $plain;
     }
 

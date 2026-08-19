@@ -13,45 +13,46 @@ $messageType = 'success';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
-    try {
-        $apiKey = str_input((string) ($_POST['api_key'] ?? ''));
-        $model = str_input((string) ($_POST['model'] ?? ''));
-        $endpoint = str_input((string) ($_POST['endpoint'] ?? ''));
-        $newPassword = (string) ($_POST['new_password'] ?? '');
-        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+    $apiKey = str_input((string) ($_POST['api_key'] ?? ''));
+    $model = str_input((string) ($_POST['model'] ?? ''));
+    $endpoint = str_input((string) ($_POST['endpoint'] ?? ''));
+    $newPassword = (string) ($_POST['new_password'] ?? '');
+    $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-        if ($apiKey !== '') {
-            setting_set('deepseek_api_key', Crypto::encrypt($apiKey));
-        }
-        if ($model !== '') {
-            setting_set('deepseek_model', $model);
-        }
-        if ($endpoint !== '') {
-            setting_set('deepseek_endpoint', rtrim($endpoint, '/'));
-        }
+    $passwordError = '';
+    if ($newPassword !== '' && $newPassword !== $confirmPassword) {
+        $passwordError = '两次输入的新密码不一致。';
+    } elseif ($newPassword !== '' && !password_strength_ok($newPassword)) {
+        $passwordError = '新密码强度不足：至少 8 位，且包含大写、小写、数字、符号中的至少三种。';
+    }
 
-        if ($newPassword !== '') {
-            if ($newPassword !== $confirmPassword) {
-                $message = '两次输入的新密码不一致。';
-                $messageType = 'error';
-            } elseif (!password_strength_ok($newPassword)) {
-                $message = '新密码强度不足：至少 8 位，且包含大写、小写、数字、符号中的至少三种。';
-                $messageType = 'error';
-            } else {
+    if ($passwordError !== '') {
+        $message = $passwordError;
+        $messageType = 'error';
+    } else {
+        try {
+            if ($apiKey !== '') {
+                setting_set('deepseek_api_key', Crypto::encrypt($apiKey));
+            }
+            if ($model !== '') {
+                setting_set('deepseek_model', $model);
+            }
+            if ($endpoint !== '') {
+                setting_set('deepseek_endpoint', rtrim($endpoint, '/'));
+            }
+            if ($newPassword !== '') {
                 $adminId = (int) ($_SESSION['admin_id'] ?? 0);
                 db()->prepare('UPDATE admins SET password_hash = :hash WHERE id = :id')
                     ->execute(['hash' => password_hash($newPassword, PASSWORD_DEFAULT), 'id' => $adminId]);
                 $message = '设置已保存，管理员密码已更新。';
-            }
-        } else {
-            if ($message === '') {
+            } else {
                 $message = '设置已保存。';
             }
+        } catch (Throwable $ex) {
+            app_log('保存设置失败: ' . $ex->getMessage(), 'error');
+            $message = '保存失败，请查看日志。';
+            $messageType = 'error';
         }
-    } catch (Throwable $ex) {
-        app_log('保存设置失败: ' . $ex->getMessage(), 'error');
-        $message = '保存失败，请查看日志。';
-        $messageType = 'error';
     }
 }
 

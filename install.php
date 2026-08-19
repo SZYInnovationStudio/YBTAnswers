@@ -16,12 +16,18 @@ $error = '';
 $csrf = csrf_token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'test_api') {
+    if (!csrf_verify()) {
+        json_response(['ok' => false, 'message' => 'CSRF 校验失败，请刷新页面。'], 419);
+    }
     $key = trim((string) ($_POST['api_key'] ?? ''));
     if ($key === '') {
         json_response(['ok' => false, 'message' => '请先输入 API Key。']);
     }
     $endpoint = rtrim(trim((string) ($_POST['endpoint'] ?: 'https://api.deepseek.com')), '/');
     $model = trim((string) ($_POST['model'] ?: 'deepseek-v4-flash'));
+    if (!preg_match('#^https?://#i', $endpoint)) {
+        json_response(['ok' => false, 'message' => 'API Endpoint 必须为 http(s) 地址。']);
+    }
 
     $payload = [
         'model' => $model,
@@ -282,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var form = document.getElementById('step3Form');
     var fd = new FormData();
     fd.append('action', 'test_api');
+    fd.append('csrf_token', form.querySelector('[name="csrf_token"]').value);
     fd.append('api_key', form.querySelector('[name="api_key"]').value.trim());
     fd.append('model', form.querySelector('[name="model"]').value.trim());
     fd.append('endpoint', form.querySelector('[name="endpoint"]').value.trim());

@@ -52,7 +52,7 @@ ob_start();
     </div>
     <div class="flex-between">
       <label class="form-checkbox">
-        <input type="checkbox" name="generate" value="1" checked>
+        <input type="checkbox" name="generate" value="1">
         抓取后自动调用 AI 生成答案
       </label>
       <button type="submit" class="btn btn--accent">开始抓取</button>
@@ -96,7 +96,7 @@ ob_start();
     </div>
     <div class="flex-between">
       <label class="form-checkbox">
-        <input type="checkbox" name="generate" value="1" checked>
+        <input type="checkbox" name="generate" value="1">
         每题抓取后自动生成答案
       </label>
       <button type="submit" class="btn btn--accent">开始批量抓取</button>

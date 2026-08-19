@@ -55,6 +55,12 @@ function handleChapterSave(bool $isUpdate): void
     }
 
     $pdo = db();
+    $subCheck = $pdo->prepare('SELECT id FROM subparts WHERE id = :id LIMIT 1');
+    $subCheck->execute(['id' => $subpartId]);
+    if (!$subCheck->fetch()) {
+        json_response(['ok' => false, 'message' => '所属小部分不存在。']);
+    }
+
     if ($isUpdate) {
         $id = int_input($_POST['id'] ?? 0);
         if ($id <= 0) {
@@ -99,10 +105,17 @@ function handleChapterMove(): void
     $neighbor = $neighborStmt->fetch();
 
     if ($neighbor) {
-        $pdo->prepare('UPDATE chapters SET sort_order = :so WHERE id = :id')
-            ->execute(['so' => $neighbor['sort_order'], 'id' => $id]);
-        $pdo->prepare('UPDATE chapters SET sort_order = :so WHERE id = :id')
-            ->execute(['so' => $chapter['sort_order'], 'id' => $neighbor['id']]);
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('UPDATE chapters SET sort_order = :so WHERE id = :id')
+                ->execute(['so' => $neighbor['sort_order'], 'id' => $id]);
+            $pdo->prepare('UPDATE chapters SET sort_order = :so WHERE id = :id')
+                ->execute(['so' => $chapter['sort_order'], 'id' => $neighbor['id']]);
+            $pdo->commit();
+        } catch (Throwable $ex) {
+            $pdo->rollBack();
+            throw $ex;
+        }
     }
     TreeCache::clear();
     json_response(['ok' => true, 'message' => '已移动。']);
@@ -163,12 +176,15 @@ function handleFetchOne(): void
     }
 
     $generated = false;
+    $skippedManual = false;
     if ($generate) {
-        $client = new AiClient();
         $stmt = db()->prepare('SELECT * FROM problems WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $problemId]);
         $problem = $stmt->fetch();
-        if ($problem) {
+        if ($problem && (int) $problem['is_answer_manual'] === 1 && trim((string) $problem['answer_code']) !== '') {
+            $skippedManual = true;
+        } elseif ($problem) {
+            $client = new AiClient();
             $genResult = $client->generateAnswer($problem);
             if ($genResult['ok']) {
                 db()->prepare('UPDATE problems SET answer_code = :code, is_answer_manual = 0, updated_at = NOW() WHERE id = :id')
@@ -193,7 +209,7 @@ function handleFetchOne(): void
         'pid' => $data['pid'],
         'title' => $data['title'],
         'generated' => $generated,
-        'message' => '抓取成功。',
+        'message' => $skippedManual ? '抓取成功，已保留人工校对答案。' : '抓取成功。',
     ]);
 }
 

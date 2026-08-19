@@ -25,6 +25,7 @@ final class Auth
     public static function login(string $username, string $password): array
     {
         $username = trim($username);
+        $username = preg_replace('/[\x00-\x1f\x7f]/', '', $username) ?? $username;
         if ($username === '' || $password === '') {
             return ['ok' => false, 'message' => '请输入账号和密码。'];
         }
@@ -44,12 +45,14 @@ final class Auth
         }
 
         if (!$admin || !password_verify($password, (string) $admin['password_hash'])) {
+            $before = self::failureCount($username);
+            if ($before + 1 >= self::MAX_ATTEMPTS) {
+                self::recordFailure($username);
+                return ['ok' => false, 'message' => '账号或密码错误，账号已锁定 ' . self::LOCK_MINUTES . ' 分钟。'];
+            }
             self::recordFailure($username);
-            $remain = self::MAX_ATTEMPTS - self::failureCount($username) - 1;
-            $message = $remain > 0
-                ? sprintf('账号或密码错误，剩余 %d 次尝试机会。', $remain)
-                : '账号或密码错误，账号已锁定 ' . self::LOCK_MINUTES . ' 分钟。';
-            return ['ok' => false, 'message' => $message];
+            $remain = self::MAX_ATTEMPTS - ($before + 1);
+            return ['ok' => false, 'message' => sprintf('账号或密码错误，剩余 %d 次尝试机会。', $remain)];
         }
 
         self::clearFailures($username);
@@ -71,20 +74,38 @@ final class Auth
         session_destroy();
     }
 
-    private static function lockKey(string $username): string
+    private static function lockFile(string $username): string
     {
-        return 'login_lock_' . md5(strtolower($username));
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        return CACHE_PATH . '/login_lock_' . md5(strtolower($username) . '|' . $ip) . '.json';
+    }
+
+    private static function readLock(string $username): array
+    {
+        $file = self::lockFile($username);
+        if (!is_file($file)) {
+            return ['count' => 0, 'until' => 0];
+        }
+        $data = json_decode((string) @file_get_contents($file), true);
+        return is_array($data)
+            ? ['count' => (int) ($data['count'] ?? 0), 'until' => (int) ($data['until'] ?? 0)]
+            : ['count' => 0, 'until' => 0];
+    }
+
+    private static function writeLock(string $username, array $data): void
+    {
+        @file_put_contents(self::lockFile($username), json_encode($data), LOCK_EX);
     }
 
     private static function lockInfo(string $username): array
     {
-        $data = $_SESSION[self::lockKey($username)] ?? null;
-        if (!is_array($data) || empty($data['until'])) {
+        $data = self::readLock($username);
+        if ($data['until'] <= 0) {
             return ['locked' => false, 'minutes' => 0];
         }
-        $remain = (int) $data['until'] - time();
+        $remain = $data['until'] - time();
         if ($remain <= 0) {
-            unset($_SESSION[self::lockKey($username)]);
+            @unlink(self::lockFile($username));
             return ['locked' => false, 'minutes' => 0];
         }
         return ['locked' => true, 'minutes' => (int) ceil($remain / 60)];
@@ -92,25 +113,23 @@ final class Auth
 
     private static function failureCount(string $username): int
     {
-        $data = $_SESSION[self::lockKey($username)] ?? null;
-        return is_array($data) ? (int) ($data['count'] ?? 0) : 0;
+        return self::readLock($username)['count'];
     }
 
     private static function recordFailure(string $username): void
     {
-        $key = self::lockKey($username);
-        $data = $_SESSION[$key] ?? ['count' => 0, 'until' => 0];
-        $data['count'] = (int) $data['count'] + 1;
+        $data = self::readLock($username);
+        $data['count']++;
         if ($data['count'] >= self::MAX_ATTEMPTS) {
             $data['until'] = time() + self::LOCK_MINUTES * 60;
             $data['count'] = 0;
         }
-        $_SESSION[$key] = $data;
+        self::writeLock($username, $data);
         app_log(sprintf('管理员登录失败: %s (IP: %s)', $username, $_SERVER['REMOTE_ADDR'] ?? '-'), 'warning');
     }
 
     private static function clearFailures(string $username): void
     {
-        unset($_SESSION[self::lockKey($username)]);
+        @unlink(self::lockFile($username));
     }
 }

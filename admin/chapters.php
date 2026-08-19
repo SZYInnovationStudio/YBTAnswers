@@ -36,10 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'chapter_delete') {
             $id = int_input($_POST['id'] ?? 0);
-            $countStmt = db()->prepare('SELECT COUNT(*) FROM problems WHERE chapter_id = :id AND deleted_at IS NULL');
+            $countStmt = db()->prepare('SELECT COUNT(*) FROM problems WHERE chapter_id = :id');
             $countStmt->execute(['id' => $id]);
             if ((int) $countStmt->fetchColumn() > 0) {
-                flash('error', '该章节下仍有题目，无法删除。请先移动或删除题目。');
+                flash('error', '该章节下仍有题目（含回收站），无法删除。请先移动或彻底删除题目。');
             } else {
                 db()->prepare('DELETE FROM chapters WHERE id = :id')->execute(['id' => $id]);
                 TreeCache::clear();

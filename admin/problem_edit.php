@@ -72,6 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($problem['chapter_id'] <= 0) {
         $errors[] = '请选择所属章节。';
+    } else {
+        $chkStmt = db()->prepare('SELECT id FROM chapters WHERE id = :id LIMIT 1');
+        $chkStmt->execute(['id' => $problem['chapter_id']]);
+        if (!$chkStmt->fetch()) {
+            $errors[] = '所选章节不存在。';
+        }
     }
 
     try {
@@ -120,13 +126,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $problem['answer_code'] = $postedAnswer;
                 $problem['is_answer_manual'] = $newManual;
             } else {
+                $newManual = trim($postedAnswer) !== '' ? 1 : 0;
                 $stmt = $pdo->prepare(
                     'INSERT INTO problems (pid, title, chapter_id, time_limit, memory_limit,
                      description, input_desc, output_desc, input_sample, output_sample,
                      source_url, answer_code, is_answer_manual, created_at, updated_at)
                      VALUES (:pid, :title, :chapter_id, :time_limit, :memory_limit,
                      :description, :input_desc, :output_desc, :input_sample, :output_sample,
-                     :source_url, :answer_code, 0, NOW(), NOW())'
+                     :source_url, :answer_code, :is_manual, NOW(), NOW())'
                 );
                 $stmt->execute([
                     'pid' => $problem['pid'],
@@ -141,10 +148,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'output_sample' => $problem['output_sample'],
                     'source_url' => $problem['source_url'],
                     'answer_code' => $postedAnswer,
+                    'is_manual' => $newManual,
                 ]);
                 $id = (int) $pdo->lastInsertId();
                 $problem['id'] = $id;
                 $problem['answer_code'] = $postedAnswer;
+                $problem['is_answer_manual'] = $newManual;
                 $isEdit = true;
             }
 

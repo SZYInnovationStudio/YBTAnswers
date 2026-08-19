@@ -54,11 +54,13 @@ final class Scraper
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 5,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_TIMEOUT => $this->timeout,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_ENCODING => '',
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                 . '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             CURLOPT_HTTPHEADER => [
@@ -69,9 +71,10 @@ final class Scraper
         ]);
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $effectiveUrl = (string) curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
         curl_close($ch);
 
-        if ($body === false || $code >= 400) {
+        if ($body === false || $code >= 400 || !$this->isAllowedHost($effectiveUrl)) {
             return null;
         }
         $html = (string) $body;
@@ -82,6 +85,13 @@ final class Scraper
             }
         }
         return $html;
+    }
+
+    private function isAllowedHost(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        $sourceHost = parse_url(SOURCE_SITE, PHP_URL_HOST);
+        return is_string($host) && is_string($sourceHost) && strcasecmp($host, $sourceHost) === 0;
     }
 
     public function parsePage(string $html, string $fallbackPid): array
@@ -194,10 +204,7 @@ final class Scraper
 
     private function sanitizeHtml(string $html): string
     {
-        $html = preg_replace('/<script[\s\S]*?<\/script>/i', '', $html) ?? $html;
-        $html = preg_replace('/\son\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
-        $html = preg_replace('/javascript\s*:/i', '', $html) ?? $html;
         $html = preg_replace('/(src|href)\s*=\s*(["\'])\/(?!\/)/i', '$1=$2' . SOURCE_SITE . '/', $html) ?? $html;
-        return trim($html);
+        return sanitize_html($html);
     }
 }

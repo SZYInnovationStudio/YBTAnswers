@@ -20,9 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('success', '题目已移入回收站。');
         } elseif ($action === 'problem_restore') {
             $id = int_input($_POST['id'] ?? 0);
-            db()->prepare('UPDATE problems SET deleted_at = NULL WHERE id = :id')->execute(['id' => $id]);
-            TreeCache::clear();
-            flash('success', '题目已恢复。');
+            $chk = db()->prepare('SELECT p.id FROM problems p LEFT JOIN chapters c ON c.id = p.chapter_id WHERE p.id = :id AND c.id IS NULL LIMIT 1');
+            $chk->execute(['id' => $id]);
+            if ($chk->fetch()) {
+                flash('error', '该题目所属章节不存在，无法恢复。请先删除后重新添加题目。');
+            } else {
+                db()->prepare('UPDATE problems SET deleted_at = NULL WHERE id = :id')->execute(['id' => $id]);
+                TreeCache::clear();
+                flash('success', '题目已恢复。');
+            }
         } elseif ($action === 'problem_purge') {
             $id = int_input($_POST['id'] ?? 0);
             db()->prepare('DELETE FROM problems WHERE id = :id')->execute(['id' => $id]);

@@ -60,10 +60,7 @@ function render_problem_content(string $content): string
     if ($content === '') {
         return '<p class="text-muted">（无）</p>';
     }
-    if (preg_match('/<[a-z][\s\S]*>/i', $content)) {
-        return '<div class="problem-content">' . $content . '</div>';
-    }
-    return '<div class="problem-content">' . render_math(e($content)) . '</div>';
+    return '<div class="problem-content">' . sanitize_html($content) . '</div>';
 }
 
 function normalize_sample(string $text): string
