@@ -200,10 +200,10 @@ function sanitize_html(string $html): string
         return '';
     }
     if (!preg_match('/<[a-z][\s\S]*>/i', $html)) {
-        return nl2br(e($html));
+        return nl2br(e(html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
     }
     if (!class_exists('DOMDocument')) {
-        return nl2br(e(strip_tags($html)));
+        return nl2br(e(strip_tags(html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8'))));
     }
 
     $allow = [
